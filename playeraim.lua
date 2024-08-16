@@ -1,31 +1,12 @@
-local yaw = require "yaw"
-local pitch = require "pitch"
+local yaw = require "lib/yaw"
+local pitch = require "lib/pitch"
 
-local CANNONS = {
-    {
-        "cbc_cannon_mount_2", -- peripheral name
-        -3, 58, 5,            -- coordinates
-        -90                   -- delta
-    },
-    {
-        "cbc_cannon_mount_3", -- peripheral name
-        -3, 58, 6,            -- coordinates
-        -90                   -- delta
-    },
-    {
-        "cbc_cannon_mount_0", -- peripheral name
-        -3, 57, 6,            -- coordinates
-        -90                   -- delta
-    },
-    {
-        "cbc_cannon_mount_1", -- peripheral name
-        -3, 57, 5,            -- coordinates
-        -90                   -- delta
-    }
-}
+local CANNONS = {peripheral.find("cbc_cannon_mount")}
 local NUM_CHARGES = 8 -- Number of charges
 local LENGTH = 21     -- Length of cannon
 local STEP_SIZE = 75  -- Step size for Newton's Method
+local YAW_DELTA = -90
+print(CANNONS)
 
 local detector = peripheral.find("playerDetector")
 local TARGET_PLAYER = "nosqd"
@@ -41,13 +22,13 @@ local function aimCannons()
     while true do
         local TARGET = getPlayerPosition()
         local fncs = {}
-        for i, pos in ipairs(CANNONS) do
+        for i, cannon in ipairs(CANNONS) do
+            local pos = {"", cannon.getX(), cannon.getY(), cannon.getZ()}
             local fnc = function()
                 local y = yaw.calculateYawForPosition({ pos[2], pos[4] }, { TARGET.x, TARGET.z })
                 local raw_dx = distance(pos[2], pos[4], TARGET.x, TARGET.z)
                 local raw_dy = pos[3] - TARGET.y
                 local p = pitch.calculate_pitch(raw_dx, raw_dy, NUM_CHARGES, LENGTH, STEP_SIZE)
-                local c = peripheral.wrap(pos[1])
 
                 print("cannon " .. i)
                 print("> target: " .. TARGET.x .. ", " .. TARGET.y .. ", " .. TARGET.z)
@@ -55,9 +36,9 @@ local function aimCannons()
                 print("> raw delta: " .. raw_dx .. ", " .. raw_dy)
                 print("> yaw: " .. y)
                 print("> pitch: " .. p)
-                c.assemble()
-                c.setYaw(y + pos[5])
-                c.setPitch(p * -1)
+                cannon.assemble()
+                cannon.setYaw(y + YAW_DELTA)
+                cannon.setPitch(p * -1)
             end
             fncs[i] = fnc
         end
