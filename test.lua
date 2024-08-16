@@ -1,6 +1,5 @@
 local yaw = require "yaw"
-local pitch = require "pitch"
-
+local pitch = require "pitch_orig"
 
 local CANNONS = {
     {
@@ -27,44 +26,49 @@ local CANNONS = {
 local NUM_CHARGES = 8 -- Number of charges
 local LENGTH = 21     -- Length of cannon
 local STEP_SIZE = 75  -- Step size for Newton's Method
-local TARGET = { 497, 91, -402 }
+local TARGET = { 498, 57, -402 }
 
 local result = {}
 
-local function distance(x1, y1, x2, y2)
+function distance(x1, y1, x2, y2)
     return math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2)
+end
+
+function calculate_raw_dx_dy(pivot_x, pivot_y, pivot_z, target_x, target_y, target_z, facing)
+    local dx = target_x - pivot_x
+    local dy = target_y - pivot_y
+    local dz = target_z - pivot_z
+    
+    local raw_dx, raw_dy
+    
+    if facing == "north" then
+        raw_dx = -dz
+        raw_dy = dy
+    elseif facing == "south" then
+        raw_dx = dz
+        raw_dy = dy
+    elseif facing == "east" then
+        raw_dx = dx
+        raw_dy = dy
+    elseif facing == "west" then
+        raw_dx = -dx
+        raw_dy = dy
+    else
+        error("Invalid facing direction. Use 'north', 'south', 'east', or 'west'.")
+    end
+    
+    return raw_dx, raw_dy
 end
 
 for i, pos in ipairs(CANNONS) do
     local y = yaw.calculateYawForPosition({ pos[2], pos[4] }, { TARGET[1], TARGET[3] })
-    local raw_dx = distance(pos[2], pos[4], TARGET[1], TARGET[3])
-    local raw_dy = pos[3] - TARGET[2]
-    local p = pitch.calculate_pitch(raw_dx, raw_dy,
-        NUM_CHARGES, LENGTH, STEP_SIZE)
+    local raw_dx, raw_dy = calculate_raw_dx_dy(pos[2], pos[3], pos[4], TARGET[1], TARGET[2], TARGET[3], "east")
+    local p = pitch.calculate_pitch(raw_dx, raw_dy)
     print("cannon " .. i)
-    print("> target: " .. TARGET[1] .. ", " .. TARGET[2] .. ", " .. TARGET[3])
     print("> position: " .. pos[2] .. ", " .. pos[3] .. ", " .. pos[4])
+    print("> target: " .. TARGET[1] .. ", " .. TARGET[2] .. ", " .. TARGET[3])
     print("> raw delta: " .. raw_dx .. ", " .. raw_dy)
     print("> yaw: " .. y)
     print("> pitch: " .. p)
     result[i] = { y, p }
-end
-
-if os.getComputerID ~= nil then
-    print("aiming")
-    local fncs = {}
-    for i, info in ipairs(CANNONS) do
-        fncs[i] = function()
-            local p = peripheral.wrap(info[1])
-            p.assemble()
-            os.sleep(0.1)
-            p.setYaw(result[i][1] + info[5])
-            os.sleep(0.5)
-            p.setPitch(result[i][2])
-            os.sleep(0.5)
-        end
-    end
-    parallel.waitForAll(table.unpack(fncs))
-else
-    print("skipping executing because not on cc")
 end
